@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Golf Improvement Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f0f8f0; color: #333; }
+        h1, h2 { text-align: center; color: #006400; }
+        form { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input, textarea, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background: #006400; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; }
+        button:hover { background: #004d00; }
+        button.edit { background: #1e90ff; }
+        button.delete { background: #dc143c; }
+        #sessions { margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; vertical-align: top; }
+        th { background: #e0e0e0; }
+        .progress { font-size: 1.2em; text-align: center; margin: 20px 0; }
+        .actions { white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <h1>My Golf Improvement Tracker</h1>
+    <p class="progress">Goal: Drop from 15 to 5 handicap by Dec 2026 | Starting Jan 2026</p>
+
+    <h2>Log a New Session</h2>
+    <form id="logForm">
+        <label for="date">Date:</label>
+        <input type="date" id="date" required>
+
+        <label for="type">Session Type:</label>
+        <select id="type" required>
+            <option value="A">Session A: Skill-Building (Short Game + Full Swing)</option>
+            <option value="B">Session B: Simulated Play + Drills</option>
+        </select>
+
+        <label for="notes">Focus/Notes (e.g., swing thoughts, what clicked):</label>
+        <textarea id="notes" rows="4" placeholder="What did you work on? Any breakthroughs?"></textarea>
+
+        <label for="stats">Key Stats (e.g., 7i carry: 155yds, GIR: 65%, Up&Downs: 9/14):</label>
+        <textarea id="stats" rows="4"></textarea>
+
+        <label for="simScore">Simulated Round Score (if applicable):</label>
+        <input type="number" id="simScore" placeholder="e.g., 82">
+
+        <button type="submit">Log Session</button>
+    </form>
+
+    <h2>Past Sessions</h2>
+    <div id="sessions"></div>
+
+    <script>
+        const form = document.getElementById('logForm');
+        const sessionsDiv = document.getElementById('sessions');
+        const dateInput = document.getElementById('date');
+
+        // Auto-fill today's date
+        dateInput.value = new Date().toISOString().split('T')[0];
+
+        function loadSessions() {
+            const sessions = JSON.parse(localStorage.getItem('golfSessions') || '[]');
+            if (sessions.length === 0) {
+                sessionsDiv.innerHTML = '<p>No sessions logged yet. Get after it!</p>';
+                return;
+            }
+
+            let table = '<table><tr><th>Date</th><th>Type</th><th>Notes</th><th>Stats</th><th>Sim Score</th><th class="actions">Actions</th></tr>';
+            let totalScore = 0;
+            let scoreCount = 0;
+
+            // Show newest first
+            sessions.slice().reverse().forEach((s, reverseIndex) => {
+                const index = sessions.length - 1 - reverseIndex; // actual index in array
+                table += `<tr>
+                    <td>${s.date}</td>
+                    <td>${s.type}</td>
+                    <td>${s.notes ? s.notes.replace(/\n/g, '<br>') : '-'}</td>
+                    <td>${s.stats ? s.stats.replace(/\n/g, '<br>') : '-'}</td>
+                    <td>${s.simScore || '-'}</td>
+                    <td class="actions">
+                        <button class="edit" onclick="editSession(${index})">Edit</button>
+                        <button class="delete" onclick="deleteSession(${index})">Delete</button>
+                    </td>
+                </tr>`;
+                if (s.simScore) {
+                    totalScore += parseInt(s.simScore);
+                    scoreCount++;
+                }
+            });
+            table += '</table>';
+
+            const avgScore = scoreCount > 0 ? (totalScore / scoreCount).toFixed(1) : 'N/A';
+            sessionsDiv.innerHTML = `<p><strong>Sessions Logged:</strong> ${sessions.length} | <strong>Avg Sim Score:</strong> ${avgScore}</p>` + table;
+        }
+
+        // Log new session
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const sessions = JSON.parse(localStorage.getItem('golfSessions') || '[]');
+            sessions.push({
+                date: dateInput.value,
+                type: document.getElementById('type').value,
+                notes: document.getElementById('notes').value.trim(),
+                stats: document.getElementById('stats').value.trim(),
+                simScore: document.getElementById('simScore').value || null
+            });
+            localStorage.setItem('golfSessions', JSON.stringify(sessions));
+            form.reset();
+            dateInput.value = new Date().toISOString().split('T')[0];
+            loadSessions();
+        });
+
+        // Edit session
+        window.editSession = function(index) {
+            const sessions = JSON.parse(localStorage.getItem('golfSessions') || '[]');
+            const s = sessions[index];
+
+            const newNotes = prompt('Edit Notes (you can also update other fields if needed):', s.notes || '');
+            if (newNotes !== null) {
+                s.notes = newNotes.trim();
+                sessions[index] = s;
+                localStorage.setItem('golfSessions', JSON.stringify(sessions));
+                loadSessions();
+            }
+        };
+
+        // Delete session
+        window.deleteSession = function(index) {
+            if (confirm('Delete this session?')) {
+                const sessions = JSON.parse(localStorage.getItem('golfSessions') || '[]');
+                sessions.splice(index, 1);
+                localStorage.setItem('golfSessions', JSON.stringify(sessions));
+                loadSessions();
+            }
+        };
+
+        // Initial load
+        loadSessions();
+    </script>
+</body>
+</html>
